@@ -6,24 +6,22 @@ import type { NextRequest } from 'next/server';
  * Checks for session cookie existence
  */
 export function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get('better-auth.session_token');
-  const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl
 
-  // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/signup'];
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
-
-  // If not authenticated and trying to access protected route
-  if (!sessionCookie && !isPublicRoute && pathname !== '/') {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Only protect /dashboard routes (add your protected routes here)
+  if (!pathname.startsWith('/dashboard')) {
+    return NextResponse.next()
   }
 
-  // If authenticated and trying to access login/signup
-  if (sessionCookie && isPublicRoute) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Check if cookie exists (try both secure and non-secure variants)
+  const sessionCookie = request.cookies.get('__Secure-better-auth.session_token')
+    || request.cookies.get('better-auth.session_token')
+
+  if (!sessionCookie) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return NextResponse.next();
+  return NextResponse.next()
 }
 
 export const config = {

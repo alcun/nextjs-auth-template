@@ -1,7 +1,6 @@
-/**
- * Authentication Actions
- * Raw fetch-based auth functions (no Better Auth client library)
- */
+'use server'
+
+import { cookies } from 'next/headers'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -39,102 +38,56 @@ interface Session {
 }
 
 /**
- * Sign up a new user
- */
-export async function signUp(data: SignUpData) {
-  const response = await fetch(`${API_URL}/api/auth/sign-up`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Sign up failed');
-  }
-
-  return response.json();
-}
-
-/**
- * Sign in with email and password
- */
-export async function signIn(data: SignInData) {
-  const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Sign in failed');
-  }
-
-  return response.json();
-}
-
-/**
- * Sign out the current user
- */
-export async function signOut() {
-  const response = await fetch(`${API_URL}/api/auth/sign-out`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    throw new Error('Sign out failed');
-  }
-
-  return response.json();
-}
-
-/**
  * Get current session (server-side only)
  * Call this in Server Components or Server Actions
  */
 export async function getSession(): Promise<Session | null> {
-  const { cookies } = await import('next/headers');
-  const cookieStore = await cookies();
+  const cookieStore = await cookies()
+  const sessionToken = cookieStore.get('__Secure-better-auth.session_token')
+    || cookieStore.get('better-auth.session_token')
 
-  const sessionCookie = cookieStore.get('better-auth.session_token');
-  if (!sessionCookie) {
-    return null;
+  if (!sessionToken) {
+    return null
   }
 
-  const response = await fetch(`${API_URL}/api/auth/session`, {
-    headers: {
-      Cookie: `better-auth.session_token=${sessionCookie.value}`,
-    },
-    credentials: 'include',
-    cache: 'no-store',
-  });
+  const cookieName = sessionToken.name
 
-  if (!response.ok) {
-    return null;
+  try {
+    const response = await fetch(`${API_URL}/api/auth/get-session`, {
+      headers: {
+        Cookie: `${cookieName}=${sessionToken.value}`,
+      },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('Failed to get session:', error)
+    return null
   }
-
-  const data = await response.json();
-  return data.session ? data : null;
 }
 
 /**
- * Get current user (client-side)
- * Call this in Client Components
+ * Sign out the current user (server action)
  */
-export async function getUser(): Promise<User | null> {
-  const response = await fetch(`${API_URL}/api/auth/session`, {
-    credentials: 'include',
-    cache: 'no-store',
-  });
+export async function logout() {
+  const cookieStore = await cookies()
 
-  if (!response.ok) {
-    return null;
+  try {
+    await fetch(`${API_URL}/api/auth/sign-out`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+  } catch (error) {
+    console.error('Logout failed:', error)
   }
 
-  const data = await response.json();
-  return data.user || null;
+  // Delete both possible cookie names
+  cookieStore.delete('__Secure-better-auth.session_token')
+  cookieStore.delete('better-auth.session_token')
 }

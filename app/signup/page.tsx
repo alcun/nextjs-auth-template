@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signUp } from '@/lib/auth-actions';
 import Link from 'next/link';
 
 export default function SignUpPage() {
@@ -19,7 +18,15 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      await signUp({ name, email, password });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/sign-up/email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      if (!res.ok) throw new Error('Sign up failed');
+
       router.push('/dashboard');
       router.refresh();
     } catch (err) {

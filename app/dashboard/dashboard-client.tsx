@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { signOut } from '@/lib/auth-actions';
+import { logout } from '@/lib/auth-actions';
 
 interface User {
   id: string;
@@ -20,7 +20,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await logout();
       router.push('/login');
       router.refresh();
     } catch (error) {

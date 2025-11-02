@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from '@/lib/auth-actions';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -18,7 +17,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn({ email, password });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/sign-in/email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) throw new Error('Authentication failed');
+
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
